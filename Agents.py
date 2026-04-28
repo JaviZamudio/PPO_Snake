@@ -54,11 +54,11 @@ class PPOAgent:
         # If previous reward hasn't been set, make it 0
         self.set_reward(0.0, player_id, override=False)
 
-        # Make everything outside size x size be treated as walls (-1)
+        # Make everything outside size x size be treated as body (1) for the agent's perception of the state
         for r in range(STATE_SIZE):
             for c in range(STATE_SIZE):
                 if r >= grid_size or c >= grid_size:
-                    state[r][c] = -1
+                    state[r][c] = 1  # Treat out of bounds as body (1)
 
         flat_state = flatten_state(state)
 

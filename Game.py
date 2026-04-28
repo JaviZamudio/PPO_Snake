@@ -30,12 +30,19 @@ class Game:
         3: (0, -1),
     }
 
-    def __init__(self, player: Player, grid_size=5):
+    def __init__(
+        self,
+        player: Player,
+        grid_size=5,
+        prefered_apple_positions: list[tuple[int, int]] | None = None,
+    ):
         if not 2 <= grid_size <= STATE_SIZE:
             raise ValueError(f"size must be between 2 and {STATE_SIZE}")
 
         self.grid_size = grid_size
         self.window_size = self.grid_size * CELL_SIZE
+
+        self.prefered_apple_positions = prefered_apple_positions
 
         pygame.init()
         pygame.display.set_caption("Grid Snake")
@@ -49,8 +56,9 @@ class Game:
             [self.EMPTY for _ in range(STATE_SIZE)] for _ in range(STATE_SIZE)
         ]
 
-        self.score = 0
-        self.high_score = 0
+        self.score: int = 0
+        self.high_score: int = 0
+        self.apple: tuple[int, int] | None = None
 
         self.reset()
 
@@ -68,21 +76,33 @@ class Game:
 
         if not empty_cells:
             return
-        
+
         pos_is_list = isinstance(pos, list)
 
-        # If not pos, pick random empty cell
-        self.apple = random.choice(empty_cells)
+        # Spawn priority: First try pos, then prefered_apple_positions, then random
         if pos is not None:
             if pos_is_list:
                 # intersect list with empty cells, and pick random
                 valid_positions = [p for p in pos if p in empty_cells]
                 if valid_positions:
                     self.apple = random.choice(valid_positions)
+                    self._set_cell(self.apple, self.APPLE)
+                    return
             else:
                 if pos in empty_cells:
                     self.apple = pos
-
+                    self._set_cell(self.apple, self.APPLE)
+                    return
+        if self.prefered_apple_positions:
+            valid_positions = [
+                p for p in self.prefered_apple_positions if p in empty_cells
+            ]
+            if valid_positions:
+                self.apple = random.choice(valid_positions)
+                self._set_cell(self.apple, self.APPLE)
+                return
+            
+        self.apple = random.choice(empty_cells)
         self._set_cell(self.apple, self.APPLE)
 
     def _is_opposite_direction(self, new_dir):
@@ -170,7 +190,9 @@ class Game:
         score_text = font.render(f"Score: {self.score}", True, (255, 255, 255))
         self.screen.blit(score_text, (10, 10))
         # High score display
-        high_score_text = font.render(f"High Score: {self.high_score}", True, (255, 255, 255))
+        high_score_text = font.render(
+            f"High Score: {self.high_score}", True, (255, 255, 255)
+        )
         self.screen.blit(high_score_text, (10, 30))
 
         pygame.display.flip()
@@ -208,5 +230,12 @@ class Game:
         self._set_cell(body, self.SNAKE)
         self._set_cell(head, self.HEAD)
 
-        self._spawn_apple(pos=[(1,1), (1,self.grid_size-2), (self.grid_size-2,1), (self.grid_size-2,self.grid_size-2)])
+        self._spawn_apple(
+            # pos=[
+            #     (1, 1),
+            #     (1, self.grid_size - 2),
+            #     (self.grid_size - 2, 1),
+            #     (self.grid_size - 2, self.grid_size - 2),
+            # ]
+        )
         self.score = 0

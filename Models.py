@@ -223,7 +223,7 @@ def flatten_state(state: list[list[int]]) -> np.ndarray:
         if head_pos and apple_pos:
             break
 
-    # If head is found, get the values of the 8 surrounding cells (if out of bounds, treat surrounding as -1)
+    # If head is found, get the values of the 8 surrounding cells (if out of bounds, treat surrounding as body (1))
     if head_pos:
         hr, hc = head_pos
         directions = [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]
@@ -232,7 +232,7 @@ def flatten_state(state: list[list[int]]) -> np.ndarray:
             if 0 <= r < len(state) and 0 <= c < len(state[r]):
                 head_surroundings[i] = state[r][c]
             else:
-                head_surroundings[i] = -1  # Out of bounds
+                head_surroundings[i] = 1  # Out of bounds is treated as body
 
     # pass direction indicators (up, right, down, left) based on apple position relative to head
     direction_indicators = [0, 0, 0, 0]
@@ -253,8 +253,11 @@ def flatten_state(state: list[list[int]]) -> np.ndarray:
     print_debug("State:")
     for row in state:
         print_debug(row)
-    print_debug(f"Head surroundings: {head_surroundings}")
-    print_debug(f"Direction indicators (up, right, down, left): {direction_indicators}")
+    print_debug(f"Head surroundings:")
+    print_debug(head_surroundings[-1], head_surroundings[0], head_surroundings[1]) # up-left, up, up-right
+    print_debug(head_surroundings[6], "X", head_surroundings[2]) # left, X (head), right
+    print_debug(head_surroundings[5],head_surroundings[4],head_surroundings[3]) # down-left, down, down-right
+    print_debug(f"Direction indicators Up: {direction_indicators[0]}, Right: {direction_indicators[1]}, Down: {direction_indicators[2]}, Left: {direction_indicators[3]}")
 
     # Flatten the 20x20 state into a 400-length array and convert to float32
     flat_state = np.array(state).flatten().astype(np.float32).reshape(1, -1)

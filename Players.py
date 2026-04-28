@@ -4,7 +4,7 @@ import pygame
 
 from Models import Critic, flatten_state
 from Agents import PPOAgent
-from configs import DEBUG_MODE
+from configs import DEBUG_MODE, STATE_SIZE
 
 class Player:
     """Base class for a player in the Snake game. Subclasses should implement the get_move method."""
@@ -48,6 +48,11 @@ class HumanPlayer(Player):
 
     def get_move(self, state, grid_size):
         """Block until a valid movement key is pressed, then return direction code."""
+
+        for r in range(STATE_SIZE):
+            for c in range(STATE_SIZE):
+                if r >= grid_size or c >= grid_size:
+                    state[r][c] = 1 
 
         if DEBUG_MODE:
             value = self.critic.predict(flatten_state(state))
