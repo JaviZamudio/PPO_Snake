@@ -46,6 +46,18 @@ class HumanPlayer(Player):
     def __init__(self):
         self.critic = Critic("snake_critic.keras")
 
+    @staticmethod
+    def static_get_move() -> int:
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    raise SystemExit("Game closed by user")
+                    return None
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key in HumanPlayer.KEY_TO_DIR:
+                        return HumanPlayer.KEY_TO_DIR[event.key]
+
     def get_move(self, state, grid_size):
         """Block until a valid movement key is pressed, then return direction code."""
 
@@ -82,7 +94,7 @@ class AIPlayer(Player):
         return self.ppo_agent.select_action(state, grid_size, self.id)
     
     def handle_eat(self, state):
-        self.ppo_agent.set_reward(5.0, self.id)
+        self.ppo_agent.set_reward(7.0, self.id)
 
     def handle_bite(self, state):
         self.ppo_agent.set_reward(-1.0, self.id)

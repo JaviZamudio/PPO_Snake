@@ -3,6 +3,7 @@ from Models import Actor, Critic, Memory, flatten_state
 
 import numpy as np
 
+import Players
 from configs import STATE_SIZE, print_debug
 
 
@@ -13,15 +14,16 @@ class PPOAgent:
         critic_path,
         leash_threshold=0.2,
         gamma=0.99,
-        memories_until_training=512,
+        memories_until_training=1,
+        epsilon=0.1,
+        human_input=False,
     ):
         self.actor = Actor(actor_path, leash_threshold)
         self.critic = Critic(critic_path, gamma)
         self.memories: list[Memory] = []
         self.memories_until_training = memories_until_training
-        self.epsilon = (
-            0.05  # Epsilon value for epsilon-greedy action selection (exploration)
-        )
+        self.epsilon = epsilon
+        self.human_input = human_input
 
     def update_next_states(self, player_id: str | None = None):
         """
@@ -65,20 +67,23 @@ class PPOAgent:
         # Predict action probabilities from the actor
         action_probs = self.actor.predict(flat_state)[0]
 
+        # Get the critic's value estimation for this state (before taking the action)
+        value_estimation = 0.0
+        if self.human_input:
+            value_estimation = self.critic.predict(flat_state)[0][0]
+            print(f" ------ \nPredicted state value estimation: {value_estimation:.4f}")
+            print(f"Action probabilities: {action_probs}")
+
         # Epsilon-greedy action selection for exploration
-        if np.random.rand() < self.epsilon:
-            action = np.random.choice(
-                len(action_probs)
-            )  # Explore: select a random action
-            # print(f"Exploring: selected random action {action}")
+        if self.human_input:
+            action = Players.HumanPlayer.static_get_move()
+        elif np.random.rand() < self.epsilon:
+            # Choose a random action (exploration)
+            action = np.random.choice(len(action_probs))
+            print(f"Exploring: selected random action {action}")
             self.epsilon *= 0.995  # Decay epsilon after each exploration
         else:
-            action = np.random.choice(len(action_probs), p=action_probs)
-
-        # state_value = self.critic.predict(flat_state)[0][0]
-        # print(f"Selected action: {action} with probability {action_probs[action]:.4f} (probabilities: {action_probs})")
-        # print(f"Predicted state value: {state_value}")
-        # input("Press Enter to continue...")
+            action = np.random.choice(len(action_probs), p=action_probs)        
 
         # Create a memory experience for this action selection
         memory_experience: Memory = {
@@ -89,9 +94,14 @@ class PPOAgent:
             "reward": None,  # Will be updated later when the reward is received
             "next_state": None,  # Will be updated later by update_next_states()
             "advantage": 0.0,  # Will be updated later by the critic
-            "value_estimation": 0.0,  # Will be updated later by the critic
+            "value_estimation": value_estimation,  # Will be updated later by the critic
             "next_value_estimation": 0.0,  # Will be updated later by the critic
         }
+
+        # if self.human_input:
+        #     print("---- Storing memory")
+        #     print(f"Chosen action: {action} with probability {action_probs[action]:.4f} (probabilities: {action_probs})")
+        #     print(f"Predicted state value estimation: {value_estimation:.4f}")
 
         self.memories.append(memory_experience)
 
@@ -103,13 +113,18 @@ class PPOAgent:
             if experience["player_id"] == player_id:
                 if override or experience["reward"] == None:
                     experience["reward"] = reward
+                    if self.human_input:
+                        print(
+                            f"Setting reward for players' last action: {reward} (override={override})"
+                        )
                 break
 
     def handle_game_end(self, player_id: str, ready_to_train: bool = True):
         # Update next states for all experiences of this player_id
         self.update_next_states(player_id)
 
-        if len(self.memories) > self.memories_until_training:
+        if len(self.memories) > self.memories_until_training or self.human_input:
+            print("Training PPO agent...")
             self.train()
 
     def clear_incomplete_experiences(self):

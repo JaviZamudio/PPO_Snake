@@ -34,6 +34,7 @@ class Game:
         self,
         player: Player,
         grid_size=5,
+        initial_apple_pos: tuple[int, int] | None = None,
         prefered_apple_positions: list[tuple[int, int]] | None = None,
     ):
         if not 2 <= grid_size <= STATE_SIZE:
@@ -43,6 +44,7 @@ class Game:
         self.window_size = self.grid_size * CELL_SIZE
 
         self.prefered_apple_positions = prefered_apple_positions
+        self.initial_apple_pos = initial_apple_pos
 
         pygame.init()
         pygame.display.set_caption("Grid Snake")
@@ -231,6 +233,7 @@ class Game:
         self._set_cell(head, self.HEAD)
 
         self._spawn_apple(
+            pos=self.initial_apple_pos
             # pos=[
             #     (1, 1),
             #     (1, self.grid_size - 2),

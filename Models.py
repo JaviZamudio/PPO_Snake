@@ -135,6 +135,9 @@ class Critic(Model):
     def __init__(self, path, gamma=0.99):
         super().__init__(path)
         self.gamma = gamma
+        
+        # Compile the model with mean squared error loss and an optimizer
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss="mse")
 
     def create_model(self) -> tf.keras.Model:
         model = tf.keras.Sequential()
@@ -189,20 +192,15 @@ class Critic(Model):
             len(memories), -1
         )
 
-        target_values = []
-        for experience in memories:
-            target_value = experience["advantage"] + experience["value_estimation"]
-            ratio = target_value / (experience["value_estimation"] + 1e-8)
-            lower_bound = 0.8
-            upper_bound = 1.2
-            clipped_ratio = np.clip(ratio, lower_bound, upper_bound)
-            clipped_target_value = experience["value_estimation"] * clipped_ratio
-            target_values.append(clipped_target_value)
+        # The target for the critic is the value estimation + advantage (which should equal the reward + discounted next value estimation)
+        targets = np.array(
+            [
+                experience["value_estimation"] + experience["advantage"]
+                for experience in memories
+            ]
+        ).reshape(-1, 1)
 
-        target_values = np.array(target_values).reshape(-1, 1)
-
-        self.model.compile(optimizer=tf.keras.optimizers.Adam(), loss="mse")
-        self.model.fit(states, target_values, epochs=5, verbose=0)
+        self.model.fit(states, targets, epochs=5, verbose=0)
 
         if save:
             self.save(self.path)  # Save the updated model after training
@@ -226,7 +224,16 @@ def flatten_state(state: list[list[int]]) -> np.ndarray:
     # If head is found, get the values of the 8 surrounding cells (if out of bounds, treat surrounding as body (1))
     if head_pos:
         hr, hc = head_pos
-        directions = [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]
+        directions = [
+            (-1, 0),
+            (-1, 1),
+            (0, 1),
+            (1, 1),
+            (1, 0),
+            (1, -1),
+            (0, -1),
+            (-1, -1),
+        ]
         for i, (dr, dc) in enumerate(directions):
             r, c = hr + dr, hc + dc
             if 0 <= r < len(state) and 0 <= c < len(state[r]):
@@ -248,16 +255,23 @@ def flatten_state(state: list[list[int]]) -> np.ndarray:
         elif ac < hc:
             direction_indicators[3] = 1  # Apple is left
 
-
     # Print state, head surroundings, and direction indicators for debugging
     print_debug("State:")
     for row in state:
         print_debug(row)
     print_debug(f"Head surroundings:")
-    print_debug(head_surroundings[-1], head_surroundings[0], head_surroundings[1]) # up-left, up, up-right
-    print_debug(head_surroundings[6], "X", head_surroundings[2]) # left, X (head), right
-    print_debug(head_surroundings[5],head_surroundings[4],head_surroundings[3]) # down-left, down, down-right
-    print_debug(f"Direction indicators Up: {direction_indicators[0]}, Right: {direction_indicators[1]}, Down: {direction_indicators[2]}, Left: {direction_indicators[3]}")
+    print_debug(
+        head_surroundings[-1], head_surroundings[0], head_surroundings[1]
+    )  # up-left, up, up-right
+    print_debug(
+        head_surroundings[6], "X", head_surroundings[2]
+    )  # left, X (head), right
+    print_debug(
+        head_surroundings[5], head_surroundings[4], head_surroundings[3]
+    )  # down-left, down, down-right
+    print_debug(
+        f"Direction indicators Up: {direction_indicators[0]}, Right: {direction_indicators[1]}, Down: {direction_indicators[2]}, Left: {direction_indicators[3]}"
+    )
 
     # Flatten the 20x20 state into a 400-length array and convert to float32
     flat_state = np.array(state).flatten().astype(np.float32).reshape(1, -1)
