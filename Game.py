@@ -35,7 +35,7 @@ class Game:
         player: Player,
         grid_size=5,
         initial_apple_pos: tuple[int, int] | None = None,
-        prefered_apple_positions: list[tuple[int, int]] | None = None,
+        preferred_apple_positions: list[tuple[int, int]] | None = None,
     ):
         if not 2 <= grid_size <= STATE_SIZE:
             raise ValueError(f"size must be between 2 and {STATE_SIZE}")
@@ -43,7 +43,7 @@ class Game:
         self.grid_size = grid_size
         self.window_size = self.grid_size * CELL_SIZE
 
-        self.prefered_apple_positions = prefered_apple_positions
+        self.prefered_apple_positions = preferred_apple_positions
         self.initial_apple_pos = initial_apple_pos
 
         pygame.init()

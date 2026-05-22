@@ -81,6 +81,7 @@ class Actor(Model):
             return
 
         epoch_count = 0
+        leash_triggered, last_drift = False, 0.0
         learning_rate = 0.00005
         optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
@@ -107,17 +108,24 @@ class Actor(Model):
                     lower_bound = 1 - self.leash_threshold
                     upper_bound = 1 + self.leash_threshold
 
+                    if lower_bound >= drift or drift >= upper_bound:
+                        leash_triggered = True
+                        last_drift = drift
+                        break  # Break from For
+
                     clipped_drift: tf.Tensor = tf.clip_by_value(
                         drift, lower_bound, upper_bound
                     )
 
                     # Calculate the PPO loss using the clipped drift
                     loss = -tf.minimum(drift * advantage, clipped_drift * advantage)
-                    # Add entropy bonus to encourage exploration
-                    # loss = loss - self.entropy * tf.reduce_sum(
-                    #     new_action_probs * tf.math.log(new_action_probs + 1e-8)
-                    # )
                     epoch_loss_list.append(loss)
+
+                if leash_triggered:
+                    print(
+                        f"Leash triggered at epoch {epoch_count} with drift {last_drift:.4f}. Stopping training early to prevent overfitting."
+                    )
+                    break # Break from While
 
                 # Calculate the mean loss for the epoch
                 final_loss = tf.reduce_mean(epoch_loss_list)
@@ -135,9 +143,11 @@ class Critic(Model):
     def __init__(self, path, gamma=0.99):
         super().__init__(path)
         self.gamma = gamma
-        
+
         # Compile the model with mean squared error loss and an optimizer
-        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss="mse")
+        self.model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss="mse"
+        )
 
     def create_model(self) -> tf.keras.Model:
         model = tf.keras.Sequential()
@@ -166,15 +176,17 @@ class Critic(Model):
 
         # For each experience in memory, calculate the advantage and update the experience with the advantage
         for i, experience in enumerate(memories):
-            state = experience["state"]
             reward = experience["reward"]
-            next_state = memories[i + 1]["state"] if i + 1 < len(memories) else state
 
             # Get value estimation for current state
             value_estimation = value_estimations[i]
 
             # Get value estimation for next state if it exists
-            next_value_estimation = next_value_estimations[i]
+            next_value_estimation = (
+                next_value_estimations[i]
+                if experience["next_state"] is not None
+                else value_estimation
+            )
 
             # Calculate advantage
             advantage = reward + (self.gamma * next_value_estimation) - value_estimation

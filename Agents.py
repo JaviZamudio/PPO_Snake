@@ -23,6 +23,7 @@ class PPOAgent:
         self.memories: list[Memory] = []
         self.memories_until_training = memories_until_training
         self.epsilon = epsilon
+        self.original_epsilon = epsilon
         self.human_input = human_input
 
     def update_next_states(self, player_id: str | None = None):
@@ -72,7 +73,9 @@ class PPOAgent:
         if self.human_input:
             value_estimation = self.critic.predict(flat_state)[0][0]
             print(f" ------ \nPredicted state value estimation: {value_estimation:.4f}")
-            print(f"Action probabilities: {action_probs}")
+            print(
+                f"Action probabilities: {list(f'{prob:.4f}' for prob in action_probs)}"
+            )
 
         # Epsilon-greedy action selection for exploration
         if self.human_input:
@@ -81,9 +84,14 @@ class PPOAgent:
             # Choose a random action (exploration)
             action = np.random.choice(len(action_probs))
             print(f"Exploring: selected random action {action}")
-            self.epsilon *= 0.995  # Decay epsilon after each exploration
+            self.epsilon *= 0.995
+            # self.epsilon = (
+            #     self.epsilon * 0.995
+            #     if self.epsilon > self.original_epsilon / 4
+            #     else self.original_epsilon / 4
+            # )  # Decay epsilon after each exploration (to a minimum of original_epsilon / 4)
         else:
-            action = np.random.choice(len(action_probs), p=action_probs)        
+            action = np.random.choice(len(action_probs), p=action_probs)
 
         # Create a memory experience for this action selection
         memory_experience: Memory = {
@@ -141,6 +149,12 @@ class PPOAgent:
         # Then run the critic to calculate advantages
         updated_memories = self.critic.run_critics(self.memories)
 
+        if self.human_input:
+            for exp in updated_memories:
+                print(
+                    f"Memory experience - Action: {exp['action']}, Reward: {exp['reward']}, Advantage: {exp['advantage']}, Value Estimation: {exp['value_estimation']}, Next Value Estimation: {exp['next_value_estimation']}"
+                )
+
         # Then train the critic with the updated memories
         self.critic.train_critic(updated_memories)
 
@@ -149,3 +163,6 @@ class PPOAgent:
 
         # Clear memories after training
         self.memories.clear()
+
+        # reset epsilon
+        self.epsilon = self.original_epsilon

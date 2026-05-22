@@ -97,11 +97,11 @@ class AIPlayer(Player):
         self.ppo_agent.set_reward(7.0, self.id)
 
     def handle_bite(self, state):
-        self.ppo_agent.set_reward(-1.0, self.id)
+        self.ppo_agent.set_reward(-1.0, self.id, override=True)
         self.ppo_agent.handle_game_end(self.id)
     
     def handle_crash(self, state):
-        self.ppo_agent.set_reward(-1.0, self.id)
+        self.ppo_agent.set_reward(-1.0, self.id, override=True)
         self.ppo_agent.handle_game_end(self.id)
 
     def handle_invalid_move(self, state):
