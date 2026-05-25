@@ -17,39 +17,41 @@ if __name__ == "__main__":
 
     ai_player = AIPlayer(ppo_agent)
 
-    preferred_apple_positions = [
-        (1, 1),  # top left
-        (1, grid_size - 2),  # top right
-        (grid_size - 2, 1),  # bottom left
-        (grid_size - 2, grid_size - 2),  # bottom right
-        (grid_size // 2, grid_size // 2),  # center
-        (1, grid_size // 2),  # top center
-        (grid_size - 2, grid_size // 2),  # bottom center
-        (grid_size // 2, 1),  # left center
-        (grid_size // 2, grid_size - 2),  # right center
+    outer_corners = [
         (0, 0),  # top left
         (0, grid_size - 1),  # top right
         (grid_size - 1, 0),  # bottom left
         (grid_size - 1, grid_size - 1),  # bottom right
-        (grid_size // 2, grid_size // 2),  # center
+    ]
+    inner_corners = [
+        (1, 1),  # top left
+        (1, grid_size - 2),  # top right
+        (grid_size - 2, 1),  # bottom left
+        (grid_size - 2, grid_size - 2),  # bottom right
+    ]
+    outer_centers = [
         (0, grid_size // 2),  # top center
         (grid_size - 1, grid_size // 2),  # bottom center
         (grid_size // 2, 0),  # left center
         (grid_size // 2, grid_size - 1),  # right center
     ]
-
-    preferred_apple_positions_corners = [
-        (0, 0),  # top left
-        (0, grid_size - 1),  # top right
-        (grid_size - 1, 0),  # bottom left
-        (grid_size - 1, grid_size - 1),  # bottom right
+    inner_centers = [
+        (1, grid_size // 2),  # top center
+        (grid_size - 2, grid_size // 2),  # bottom center
+        (grid_size // 2, 1),  # left center
+        (grid_size // 2, grid_size - 2),  # right center
     ]
+    center = (grid_size // 2, grid_size // 2)
+
+    preferred_apple_positions = (
+        outer_corners + inner_corners + outer_centers + inner_centers + [center]
+    )
 
     game = Game(
         ai_player,
         grid_size=grid_size,
-        #initial_apple_pos=(grid_size // 2, grid_size // 2 - 3),
-        preferred_apple_positions=preferred_apple_positions,
+        # initial_apple_pos=(grid_size // 2, grid_size // 2 - 3),
+        # preferred_apple_positions=preferred_apple_positions,
     )
 
     while True:

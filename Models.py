@@ -82,8 +82,18 @@ class Actor(Model):
 
         epoch_count = 0
         leash_triggered, last_drift = False, 0.0
-        learning_rate = 0.00005
+        # max_drift, min_drift = 0.0, float("inf")
+        learning_rate = 0.00001
         optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+
+        # Normalize advantages for better training stability (make them all proportional between -1 and 1)
+        max_advantage = max(exp["advantage"] for exp in memory)
+        min_advantage = min(exp["advantage"] for exp in memory)
+        for experience in memory:
+            if experience["advantage"] > 0:
+                experience["advantage"] /= max_advantage if max_advantage > 0 else 1
+            elif experience["advantage"] < 0:
+                experience["advantage"] /= -min_advantage if min_advantage < 0 else 1
 
         while epoch_count < 5:
             epoch_count += 1
@@ -105,6 +115,10 @@ class Actor(Model):
                     new_prob = new_action_probs[original_action_index]
                     drift = new_prob / original_action_prob
 
+                    # Update max and min drift for monitoring
+                    # max_drift = max(max_drift, drift)
+                    # min_drift = min(min_drift, drift)
+
                     lower_bound = 1 - self.leash_threshold
                     upper_bound = 1 + self.leash_threshold
 
@@ -121,6 +135,9 @@ class Actor(Model):
                     loss = -tf.minimum(drift * advantage, clipped_drift * advantage)
                     epoch_loss_list.append(loss)
 
+                # print(
+                #     f"Epoch {epoch_count}: Max Drift: {max_drift:.4f}, Min Drift: {min_drift:.4f}"
+                # )
                 if leash_triggered:
                     print(
                         f"Leash triggered at epoch {epoch_count} with drift {last_drift:.4f}. Stopping training early to prevent overfitting."

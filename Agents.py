@@ -84,7 +84,7 @@ class PPOAgent:
             # Choose a random action (exploration)
             action = np.random.choice(len(action_probs))
             print(f"Exploring: selected random action {action}")
-            self.epsilon *= 0.995
+            self.epsilon *= 0.95
             # self.epsilon = (
             #     self.epsilon * 0.995
             #     if self.epsilon > self.original_epsilon / 4
